@@ -1,0 +1,197 @@
+import sys
+import hashlib
+
+def login(username,password):
+	"""
+	Check username and password (user authentecation)
+	"""
+	f = open("db.txt","r")  #Open file text as read_only
+	for line in f:
+		line = line.strip()
+		line_list = line.split("$$") #Split the line into lists according to $$ parameter
+		if username == line_list[0] and pw_encrypt(password) == line_list[1]:
+			return True
+	return False
+	
+def register(username,password, privilege):
+	"""
+	User registration function
+	"""
+	with open("db.txt","a") as f: #Open file text (DB) for adding line username,pass,privilege separated by $$ parameter
+		temp = "\n" + username + "$$" + pw_encrypt(password) + "$$" + privilege
+		f.write(temp)
+	return True
+	
+def user_exist(username):
+	"""
+	Check the user exists in DB
+	"""
+	with open("db.txt","r") as f:
+		for line in f:
+			line = line.strip()
+			line_list = line.split("$$")
+			if line_list[0] == username:
+				return True
+	return False
+	
+def pw_encrypt(password):
+	"""
+	Encrypt the password
+	"""
+	hash_string = (password)
+	hash_string = hash_string.encode("utf8")
+	return hashlib.sha256(hash_string).hexdigest()
+	
+def pass_check(password):
+	"""
+	Check the password is strong and more than 6 characters
+	"""
+	if len(password) > 6:
+		return True
+	return False	
+	
+def is_authorized(username):
+	"""
+	Check user authorization
+	"""
+	f2 = open("db.txt","r")
+	for line2 in f2:
+		line2 = line2.strip()
+		line2_list = line2.split("$$")
+		if username == line2_list[0] and line2_list[2] == "0": # check username and privilege level (eg. 0 = not authorized)
+			return True
+	return False
+	
+def menu():
+	'''
+	Menu for the system to welcome the user and bring some choices
+	'''
+	print("*"* 40)
+	print("Welcome to login xxx system")
+	print("Login[1] Register[2] Exit[3]")
+	print("*"* 40)
+	
+def menu_login():
+	'''
+	Function to receive user choices and recall another functions according to user choice
+	'''
+	count = 0
+	while True:
+		user = input("Please enter user:")
+		pwd = input("Please enter your password:")
+		if user == "": # to prevent user to enter empty name
+			print("User Name could not be empty")
+			break
+		is_login = login(user,pwd) # recall function to  check user login
+		if is_login:
+			print("login successful")
+			print("*"* 40)
+			menu_booking(user) # if the login is valid, then recall booking menu
+			break
+		else:
+			print("User or Password incorrect, Login failed")
+			count += 1
+			if count >= 3:  # to prevent the user to guess the password forever or do DoS attacks
+				print("*"* 40)
+				print("Three times errors and login is not allowed") 
+				break
+				
+def menu_register():
+	'''
+	Function to enable the user to register as a new user for the system
+	'''
+	while True:
+		user = input("Please enter user:")
+		pwd = input("Please enter your password:")
+		privilege = "0"
+		is_exist = user_exist(user)   # check if the user is exist
+		is_complex = pass_check(pwd)   # check if password is strong
+		if user == "":                #check if the username is empty
+			print("User Name could not be empty")
+			break
+		if is_exist:
+			print("Username already exists and cannot be registered")
+		elif not is_complex:
+			print("Password must be more than 6 digits")
+		else:
+			register(user,pwd,privilege)  # recall register function to add the user to system DB if it is new user and password is strong
+			print("registration success")
+			break
+			
+def menu_booking(user):
+	'''
+	Menu for booking system to enable the user to book new appointment or delete exit appointment
+	'''
+	while True:
+		user = user
+		print("*"* 40)
+		print("Welcome:  " + user)
+		print("New Appointment[1] Delete[2] Main[3]")
+		print("*"* 40)
+		inp = input("Please Select: ")
+		print("*"* 40)
+		if inp == "1": # if the user choose [1] then recall function to book new appointment
+			booking_info(user)
+		elif inp == "2": # if the user choose [2] then recall function to check his authorization
+			if not is_authorized(user):
+				booking_delete(user) # if the user authorized, enable him to delete/cancle the appointment
+			else:
+				print("User is not authorized")
+		elif inp == "3":
+			main()
+		else:
+			print("You enter invalid choice. Please re-enter.")
+			
+def booking(username,date):
+	"""
+	Function to booking for user in ASMIS
+	"""
+	with open("schedule.txt","a") as f1:
+		temp1 = "\n" + username + "##" + date  #Open file text for adding line username,booking date separated by ## parameter
+		f1.write(temp1)
+	return True
+	
+def booking_info(user):
+	'''
+	Booking an appointment for the user
+	'''
+	while True:
+		user = user
+		print("Booking for:  " + user)
+		date = input("Please enter booking date:")
+		is_booking = booking(user,date) #recall the booking function
+		if date == "":                #check if the date is empty to prevent booking invalid date
+			print("Date could not be empty")
+			break
+		if is_booking:
+			print("booking successful")
+			break
+		else:
+			print("Already booked choose another date")
+		
+def booking_delete(user):
+	'''
+	Cancle or delete the booked appointment
+	'''
+	user = user
+	print(user + " Are you sure you want to Delete the appointment?")
+	# then apply deleting steps (not included in this code)
+	
+def main():
+	'''
+	The main function to receive user choices and recall another functions according to user choice
+	'''
+	while True:
+		menu()  # recall menu function
+		inp = input("Please Select: ") # receive user choice
+		print("*"* 40)
+		if inp == "1": # recall login menu
+			menu_login()
+		elif inp == "2": # recall register menu
+			menu_register()
+		elif inp == "3": #exit
+			sys.exit()
+		else:
+			print("You enter invalid choice. Please re-enter.")
+		
+main()
